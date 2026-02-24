@@ -1,0 +1,23 @@
+name: SOPHGO SG204x
+
+on:
+  push:
+    paths:
+      - '.github/workflows/sophgo-sg204x.yml'
+      - '.github/workflows/sophgo-sg204x-specific.yml'
+      - 'sophgo-sg204x/**'
+
+jobs:
+  build-specific:
+    name: Build Specific Targets for Each Combination
+    strategy:
+      matrix:
+        include:
+          - target_name: sophgo-sg2044-srd3-10
+            zsbl_defconfig: sg2044_defconfig
+          - target_name: sophgo-sg2042-milkv-pioneer
+            zsbl_defconfig: sg2042_defconfig
+    uses: ./.github/workflows/sophgo-sg204x-specific.yml
+    with:
+      target_name: ${{ matrix.target_name }}
+      zsbl_defconfig: ${{ matrix.zsbl_defconfig }}

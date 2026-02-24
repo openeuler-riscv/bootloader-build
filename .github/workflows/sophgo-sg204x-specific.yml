@@ -1,0 +1,60 @@
+name: Specific Targets for SOPHGO SG204x LinuxBoot
+
+on:
+  workflow_call:
+    inputs:
+      target_name:
+        required: true
+        type: string
+      zsbl_defconfig:
+        required: true
+        type: string
+
+jobs:
+
+  build-zsbl:
+    name: Build ZSBL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Toolchains
+        id: setup-gcc-toolchain
+        uses: ./.github/actions/riscv64-gcc-toolchain
+      - name: Checkout ZSBL
+        uses: actions/checkout@v6
+        with:
+          repository: revyos/zsbl
+          path: zsbl
+          # Branch sg204x as of 20260224
+          ref: 45054e711d81fbfa1c2167829402d26795199ae7
+          fetch-depth: 1
+      - name: Build ZSBL
+        working-directory: zsbl
+        run: |
+          make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} "${{ inputs.zsbl_defconfig }}"
+          make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} USE_LINUX_BOOT=1 zsbl.bin
+      - name: Collect ZSBL Binary
+        run: |
+          mkdir dist
+          cp zsbl/zsbl.bin dist/zsbl.bin
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ inputs.target_name }}-zsbl"
+          path: dist
+
+
+  # build-kernel:
+  #   name: Build Kernel for LinuxBoot
+  #   runs-on: ubuntu-latest
+  #   steps: []
+  #
+  # build-opensbi:
+  #   name: Build OpenSBI
+  #   runs-on: ubuntu-latest
+  #   steps: []
+  #
+  # build-u-root:
+  #   name: Build OpenSBI for LinuxBoot
+  #   runs-on: ubuntu-latest
+  #   steps: []
