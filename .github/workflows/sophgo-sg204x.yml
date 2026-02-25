@@ -59,21 +59,60 @@ jobs:
           name: "${{ matrix.target_name }}-zsbl"
           path: dist
 
-  # build-opensbi:
-  #   name: Build OpenSBI
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - opensbi_repo: revyos/opensbi
-  #           # Branch sg204x-v1.8.1-rva23 as of 20260225
-  #           opensbi_ref: 1a59a37c667dde717c26abf02c9a54c7c5d9212a
-  #         - opensbi_repo: revyos/opensbi
-  #           # Branch sg204x-v1.8.1 as of 20260225
-  #           opensbi_ref: 175cafd0ca69534c5a6943e1e427150e65fbec23
-  #         - opensbi_repo: sophgo/opensbi
-  #           # Branch sg2042-dev as of 20260225
-  #           opensbi_ref: adc7ba17f3726aee599bc6fc879fbc569fbbba71
-  #   steps: []
+  build-opensbi:
+    name: Build OpenSBI
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target_name: sophgo-sg2044-rva23
+            opensbi_repo: revyos/opensbi
+            # Branch sg204x-v1.8.1-rva23 as of 20260225
+            opensbi_ref: 1a59a37c667dde717c26abf02c9a54c7c5d9212a
+          - target_name: sophgo-sg2044
+            opensbi_repo: revyos/opensbi
+            # Branch sg204x-v1.8.1 as of 20260225
+            opensbi_ref: 175cafd0ca69534c5a6943e1e427150e65fbec23
+          - target_name: sophgo-sg2042
+            opensbi_repo: sophgo/opensbi
+            # Branch sg2042-dev as of 20260225
+            opensbi_ref: adc7ba17f3726aee599bc6fc879fbc569fbbba71
+    steps:
+      - name: Cache OpenSBI Build
+        id: cache-opensbi-build
+        uses: actions/cache@v5
+        with:
+          path: dist
+          key: cache-opensbi-build-${{ matrix.target_name }}-${{ matrix.opensbi_ref }}
+      - uses: actions/checkout@v5
+        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
+      - name: Setup Toolchains
+        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
+        id: setup-gcc-toolchain
+        uses: ./.github/actions/riscv64-gcc-toolchain
+      - name: Checkout OpenSBI
+        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ matrix.opensbi_repo }}
+          path: opensbi
+          # Branch sg204x as of 20260224
+          ref: ${{ matrix.opensbi_ref }}
+          fetch-depth: 1
+      - name: Build OpenSBI
+        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
+        run: |
+          make -j"$(nproc)" -C opensbi O=$(pwd)/build CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} PLATFORM=generic FW_PIC=y BUILD_INFO=y
+      - name: Collect OpenSBI Binary
+        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir dist
+          cp build/platform/generic/firmware/fw_dynamic.bin dist/fw_dynamic.bin
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.target_name }}-opensbi"
+          path: dist
 
   build-u-root:
     name: Build u-root for LinuxBoot
