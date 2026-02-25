@@ -15,25 +15,38 @@ jobs:
   build-zsbl:
     name: Build ZSBL
     runs-on: ubuntu-latest
+    env:
+      ZSBL_COMMIT_ID: 45054e711d81fbfa1c2167829402d26795199ae7
     steps:
+      - name: Cache ZSBL Build
+        id: cache-zsbl-build
+        uses: actions/cache@v5
+        with:
+          path: dist
+          key: cache-zsbl-build-${{ inputs.target_name }}-${{ env.ZSBL_COMMIT_ID }}
       - uses: actions/checkout@v5
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
       - name: Setup Toolchains
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
         id: setup-gcc-toolchain
         uses: ./.github/actions/riscv64-gcc-toolchain
       - name: Checkout ZSBL
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v6
         with:
           repository: revyos/zsbl
           path: zsbl
           # Branch sg204x as of 20260224
-          ref: 45054e711d81fbfa1c2167829402d26795199ae7
+          ref: ${{ env.ZSBL_COMMIT_ID }}
           fetch-depth: 1
       - name: Build ZSBL
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
         working-directory: zsbl
         run: |
           make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} "${{ inputs.zsbl_defconfig }}"
           make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} USE_LINUX_BOOT=1 zsbl.bin
       - name: Collect ZSBL Binary
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
         run: |
           mkdir dist
           cp zsbl/zsbl.bin dist/zsbl.bin
