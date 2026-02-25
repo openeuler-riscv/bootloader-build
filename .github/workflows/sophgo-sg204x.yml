@@ -25,26 +25,38 @@ jobs:
   build-u-root:
     name: Build u-root for LinuxBoot
     runs-on: ubuntu-latest
+    env:
+      U_ROOT_COMMIT_ID: 69595b5c67cb59b0afb9744d13625b9df6869a64
     steps:
+      - name: Cache u-root Build
+        id: cache-u-root-build
+        uses: actions/cache@v5
+        with:
+          path: dist
+          key: cache-u-root-build-${{ env.U_ROOT_COMMIT_ID }}
       - name: Setup Golang
+        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
         uses: actions/setup-go@v6
         with:
           go-version: '1.17'
           cache: true
       - name: Checkout u-root
+        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v6
         with:
           repository: openeuler-riscv/u-root
           path: u-root
           # Branch sg204x-v0.15 as of 20260225
-          ref: 69595b5c67cb59b0afb9744d13625b9df6869a64
+          ref: "${{ env.U_ROOT_COMMIT_ID }}"
           fetch-depth: 1
       - name: Build u-root
+        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
         working-directory: u-root
         run: |
           go build
           GOOS=linux GOARCH=riscv64 ./u-root -uroot-source . -build bb -uinitcmd="boot" -o initrd.img core boot
       - name: Collect u-root Binary
+        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
         run: |
           mkdir dist
           cp u-root/initrd.img dist/initrd.img
