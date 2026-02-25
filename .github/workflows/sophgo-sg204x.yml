@@ -4,12 +4,13 @@ on:
   push:
     paths:
       - '.github/workflows/sophgo-sg204x.yml'
-      - '.github/workflows/sophgo-sg204x-specific.yml'
       - 'sophgo-sg204x/**'
 
 jobs:
-  build-specific:
-    name: Build Specific Targets for Each Combination
+
+  build-zsbl:
+    name: Build ZSBL
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
@@ -17,10 +18,62 @@ jobs:
             zsbl_defconfig: sg2044_defconfig
           - target_name: sophgo-sg2042-milkv-pioneer
             zsbl_defconfig: sg2042_defconfig
-    uses: ./.github/workflows/sophgo-sg204x-specific.yml
-    with:
-      target_name: ${{ matrix.target_name }}
-      zsbl_defconfig: ${{ matrix.zsbl_defconfig }}
+    env:
+      ZSBL_COMMIT_ID: 45054e711d81fbfa1c2167829402d26795199ae7
+    steps:
+      - name: Cache ZSBL Build
+        id: cache-zsbl-build
+        uses: actions/cache@v5
+        with:
+          path: dist
+          key: cache-zsbl-build-${{ matrix.target_name }}-${{ env.ZSBL_COMMIT_ID }}
+      - uses: actions/checkout@v5
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+      - name: Setup Toolchains
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+        id: setup-gcc-toolchain
+        uses: ./.github/actions/riscv64-gcc-toolchain
+      - name: Checkout ZSBL
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v6
+        with:
+          repository: revyos/zsbl
+          path: zsbl
+          # Branch sg204x as of 20260224
+          ref: ${{ env.ZSBL_COMMIT_ID }}
+          fetch-depth: 1
+      - name: Build ZSBL
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+        working-directory: zsbl
+        run: |
+          make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} "${{ matrix.zsbl_defconfig }}"
+          make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} USE_LINUX_BOOT=1 zsbl.bin
+      - name: Collect ZSBL Binary
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir dist
+          cp zsbl/zsbl.bin dist/zsbl.bin
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.target_name }}-zsbl"
+          path: dist
+
+  # build-opensbi:
+  #   name: Build OpenSBI
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - opensbi_repo: revyos/opensbi
+  #           # Branch sg204x-v1.8.1-rva23 as of 20260225
+  #           opensbi_ref: 1a59a37c667dde717c26abf02c9a54c7c5d9212a
+  #         - opensbi_repo: revyos/opensbi
+  #           # Branch sg204x-v1.8.1 as of 20260225
+  #           opensbi_ref: 175cafd0ca69534c5a6943e1e427150e65fbec23
+  #         - opensbi_repo: sophgo/opensbi
+  #           # Branch sg2042-dev as of 20260225
+  #           opensbi_ref: adc7ba17f3726aee599bc6fc879fbc569fbbba71
+  #   steps: []
 
   build-u-root:
     name: Build u-root for LinuxBoot
