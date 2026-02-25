@@ -25,9 +25,7 @@ runs:
       uses: actions/cache@v5
       with:
         path: /opt/riscv-gnu-toolchain
-        key: gcc-riscv64-glibc-ubuntu-24.04-${{ hashFiles('/tmp/riscv64-gcc.tar.xz') }}
-        restore-keys: |
-          gcc-riscv64-glibc-ubuntu-24.04
+        key: cache-gcc-riscv64-glibc-ubuntu-24.04-2026.02.13
     - name: Setup RISCV64 GCC Toolchain
       if: ${{ steps.cache-riscv64-gcc-toolchain.outputs.cache-hit != 'true' }}
       shell: bash
