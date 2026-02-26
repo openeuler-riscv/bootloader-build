@@ -157,3 +157,58 @@ jobs:
         with:
           name: "u-root-sophgo-sg204x"
           path: dist
+
+  build-kernel:
+    name: Build Linux Kernel
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target_name: sophgo-sg2044
+            kernel_repo: revyos/linux
+            # Branch revyos/6.18.y as of 20260226
+            kernel_ref: a7aa9547d2b946aee64e68ff46ad0f61196fe798
+            kernel_defconfig: kexec_defconfig
+          - target_name: sophgo-sg2042
+            kernel_repo: revyos/linux
+            # Branch revyos/6.18.y as of 20260226
+            kernel_ref: a7aa9547d2b946aee64e68ff46ad0f61196fe798
+            kernel_defconfig: kexec_defconfig
+    steps:
+      - name: Cache Kernel Build
+        id: cache-kernel-build
+        uses: actions/cache@v5
+        with:
+          path: dist
+          key: cache-kernel-build-${{ matrix.kernel_repo }}-${{ matrix.kernel_defconfig }}-${{ matrix.kernel_ref }}
+      - uses: actions/checkout@v5
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+      - name: Setup Toolchains
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        id: setup-gcc-toolchain
+        uses: ./.github/actions/riscv64-gcc-toolchain
+      - name: Checkout Kernel
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ matrix.kernel_repo }}
+          path: linux
+          # Branch sg204x as of 20260224
+          ref: ${{ matrix.kernel_ref }}
+          fetch-depth: 1
+      - name: Build Kernel
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        run: |
+          make -j"$(nproc)" -C linux O=$(pwd)/build ARCH=riscv CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} ${{ matrix.kernel_defconfig }}
+          make -j"$(nproc)" -C linux O=$(pwd)/build ARCH=riscv CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} Image dtbs
+      - name: Collect Kernel Binary
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir dist
+          cp build/arch/riscv/boot/Image dist/riscv64_Image
+          cp build/arch/riscv/boot/dts/sophgo/*.dtb dist
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "kernel-${{ matrix.target_name }}"
+          path: dist
