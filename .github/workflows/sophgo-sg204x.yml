@@ -212,3 +212,78 @@ jobs:
         with:
           name: "kernel-${{ matrix.target_name }}"
           path: dist
+
+  pack-sdimage-sg2042:
+    name: Pack SD Card Boot Image for SG2042
+    needs:
+      - build-zsbl
+      - build-opensbi
+      - build-u-root
+      - build-kernel
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # - zsbl_target_name: sophgo-sg2044-srd3-10
+          #   opensbi_target_name: sophgo-sg2044-rva23
+          #   kernel_target_name: sophgo-sg2044
+          # - zsbl_target_name: sophgo-sg2044-srd3-10
+          #   opensbi_target_name: sophgo-sg2044
+          #   kernel_target_name: sophgo-sg2044
+          - zsbl_target_name: sophgo-sg2042-milkv-pioneer
+            opensbi_target_name: sophgo-sg2042
+            kernel_target_name: sophgo-sg2042
+            output_filename: firmware-linuxboot-sophgo-sg2042.img
+    steps:
+      - name: Checkout This Repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          path: u-boot-build
+      - name: Setup Work Dirs
+        run: |
+          mkdir -p staging/riscv64
+          mkdir -p dist
+      - name: Fetch Pre-built ZSBL
+        uses: actions/download-artifact@v5
+        with:
+          name: "zsbl-${{ matrix.zsbl_target_name }}"
+          path: staging
+          merge-multiple: true
+      - name: Copy fip.bin
+        run: |
+          cp u-boot-build/sophgo-sg204x/blobs/sg2042/fip.bin staging
+      - name: Fetch Pre-built OpenSBI
+        uses: actions/download-artifact@v5
+        with:
+          name: "opensbi-${{ matrix.opensbi_target_name }}"
+          path: staging/riscv64
+          merge-multiple: true
+      - name: Fetch Pre-built Kernel
+        uses: actions/download-artifact@v5
+        with:
+          name: "kernel-${{ matrix.kernel_target_name }}"
+          path: staging/riscv64
+          merge-multiple: true
+      - name: Fetch Pre-built u-root
+        uses: actions/download-artifact@v5
+        with:
+          name: "u-root-sophgo-sg204x"
+          path: staging/riscv64
+          merge-multiple: true
+      - name: Create SD Card Image
+        run: |
+          truncate -s 128M dist/${{ matrix.output_filename }}
+          echo "type=c" | sfdisk dist/${{ matrix.output_filename }}
+          LOOP_DEV="$(sudo losetup -Pf --show dist/${{ matrix.output_filename }})"
+          sudo mkfs.vfat -n BOOTFIRM "${LOOP_DEV}p1"
+          TEMP_MNT="$(mktemp -d)"
+          sudo mount "${LOOP_DEV}p1" "${TEMP_MNT}"
+          sudo cp -r staging/* "${TEMP_MNT}/"
+          sudo umount "${TEMP_MNT}"
+          sudo losetup -d "${LOOP_DEV}"
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.output_filename }}"
+          path: dist
