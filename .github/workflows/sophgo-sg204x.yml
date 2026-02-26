@@ -170,10 +170,10 @@ jobs:
             kernel_ref: a7aa9547d2b946aee64e68ff46ad0f61196fe798
             kernel_defconfig: kexec_defconfig
           - target_name: sophgo-sg2042
-            kernel_repo: revyos/linux
-            # Branch revyos/6.18.y as of 20260226
-            kernel_ref: a7aa9547d2b946aee64e68ff46ad0f61196fe798
-            kernel_defconfig: kexec_defconfig
+            kernel_repo: sophgo/linux-riscv
+            # Branch sg2042-dev-6.6 as of 20260226
+            kernel_ref: 15143c39ba8d2ebd6c47e7eabcbf2a3b19960532
+            kernel_defconfig: sophgo_mango_normal_defconfig
     steps:
       - name: Cache Kernel Build
         id: cache-kernel-build
@@ -265,6 +265,9 @@ jobs:
           name: "kernel-${{ matrix.kernel_target_name }}"
           path: staging/riscv64
           merge-multiple: true
+      - name: Fixup dtb name
+        run: |
+          mv staging/riscv64/mango-milkv-pioneer.dtb staging/riscv64/sg2042-milkv-pioneer.dtb
       - name: Fetch Pre-built u-root
         uses: actions/download-artifact@v5
         with:
