@@ -1,0 +1,58 @@
+on:
+  workflow_call:
+    inputs:
+      target_name:
+        required: true
+        type: string
+      kernel_repo:
+        required: true
+        type: string
+      kernel_ref:
+        required: true
+        type: string
+      kernel_defconfig:
+        required: true
+        type: string
+
+jobs:
+  build-kernel:
+    name: Build Kernel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Cache Kernel Build
+        id: cache-kernel-build
+        uses: actions/cache@v5
+        with:
+          path: dist
+          key: cache-kernel-build-${{ inputs.target_name }}-ref=${{ inputs.kernel_ref }}-def=${{ inputs.kernel_defconfig }}-wf=${{ hashFiles('ctx/.github/workflows/.sophgo-sg204x.kernel-build.yml') }}
+      - name: Setup Toolchains
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        id: setup-gcc-toolchain
+        uses: ./ctx/.github/actions/riscv64-gcc-toolchain
+      - name: Checkout Kernel
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.kernel_repo }}
+          path: linux
+          ref: ${{ inputs.kernel_ref }}
+          fetch-depth: 1
+      - name: Build Kernel
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        run: |
+          make -j"$(nproc)" -C linux O=$(pwd)/build ARCH=riscv CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} ${{ inputs.kernel_defconfig }}
+          make -j"$(nproc)" -C linux O=$(pwd)/build ARCH=riscv CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} Image dtbs
+      - name: Collect Kernel Binary
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir dist
+          cp build/arch/riscv/boot/Image dist/riscv64_Image
+          cp build/arch/riscv/boot/dts/sophgo/*.dtb dist
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "kernel-${{ inputs.target_name }}"
+          path: dist

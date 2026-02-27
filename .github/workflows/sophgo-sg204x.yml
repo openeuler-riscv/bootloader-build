@@ -4,236 +4,100 @@ on:
   push:
     paths:
       - '.github/workflows/sophgo-sg204x.yml'
+      - '.github/workflows/.sophgo-sg204x.*'
       - 'sophgo-sg204x/**'
 
 jobs:
 
-  build-zsbl:
-    name: Build ZSBL
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - target_name: sophgo-sg2044-srd3-10
-            zsbl_defconfig: sg2044_defconfig
-          - target_name: sophgo-sg2042-milkv-pioneer
-            zsbl_defconfig: sg2042_defconfig
-    env:
-      ZSBL_COMMIT_ID: 45054e711d81fbfa1c2167829402d26795199ae7
-    steps:
-      - name: Cache ZSBL Build
-        id: cache-zsbl-build
-        uses: actions/cache@v5
-        with:
-          path: dist
-          key: cache-zsbl-build-${{ matrix.target_name }}-${{ env.ZSBL_COMMIT_ID }}
-      - uses: actions/checkout@v5
-        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
-      - name: Setup Toolchains
-        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
-        id: setup-gcc-toolchain
-        uses: ./.github/actions/riscv64-gcc-toolchain
-      - name: Checkout ZSBL
-        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
-        uses: actions/checkout@v6
-        with:
-          repository: revyos/zsbl
-          path: zsbl
-          # Branch sg204x as of 20260224
-          ref: ${{ env.ZSBL_COMMIT_ID }}
-          fetch-depth: 1
-      - name: Build ZSBL
-        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
-        working-directory: zsbl
-        run: |
-          make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} "${{ matrix.zsbl_defconfig }}"
-          make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} USE_LINUX_BOOT=1 zsbl.bin
-      - name: Collect ZSBL Binary
-        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
-        run: |
-          mkdir dist
-          cp zsbl/zsbl.bin dist/zsbl.bin
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: "zsbl-${{ matrix.target_name }}"
-          path: dist
+  build-zsbl-sg2042:
+    name: Build ZSBL for SG2042
+    uses: ./.github/workflows/.sophgo-sg204x.zsbl-build.yml
+    with:
+      target_name: sophgo-sg2042
+      zsbl_repo: revyos/zsbl
+      # Branch sg204x as of 20260227
+      zsbl_ref: 45054e711d81fbfa1c2167829402d26795199ae7
+      zsbl_defconfig: sg2042_defconfig
+  build-zsbl-sg2044:
+    name: Build ZSBL for SG2044
+    uses: ./.github/workflows/.sophgo-sg204x.zsbl-build.yml
+    with:
+      target_name: sophgo-sg2044
+      zsbl_repo: revyos/zsbl
+      # Branch sg204x as of 20260227
+      zsbl_ref: 45054e711d81fbfa1c2167829402d26795199ae7
+      zsbl_defconfig: sg2044_defconfig
 
-  build-opensbi:
-    name: Build OpenSBI
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - target_name: sophgo-sg2044-rva23
-            opensbi_repo: revyos/opensbi
-            # Branch sg204x-v1.8.1-rva23 as of 20260225
-            opensbi_ref: 1a59a37c667dde717c26abf02c9a54c7c5d9212a
-          - target_name: sophgo-sg2044
-            opensbi_repo: revyos/opensbi
-            # Branch sg204x-v1.8.1 as of 20260225
-            opensbi_ref: 175cafd0ca69534c5a6943e1e427150e65fbec23
-          - target_name: sophgo-sg2042
-            opensbi_repo: sophgo/opensbi
-            # Branch sg2042-dev as of 20260225
-            opensbi_ref: adc7ba17f3726aee599bc6fc879fbc569fbbba71
-    steps:
-      - name: Cache OpenSBI Build
-        id: cache-opensbi-build
-        uses: actions/cache@v5
-        with:
-          path: dist
-          key: cache-opensbi-build-${{ matrix.target_name }}-${{ matrix.opensbi_ref }}
-      - uses: actions/checkout@v5
-        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
-      - name: Setup Toolchains
-        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
-        id: setup-gcc-toolchain
-        uses: ./.github/actions/riscv64-gcc-toolchain
-      - name: Checkout OpenSBI
-        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ matrix.opensbi_repo }}
-          path: opensbi
-          # Branch sg204x as of 20260224
-          ref: ${{ matrix.opensbi_ref }}
-          fetch-depth: 1
-      - name: Build OpenSBI
-        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
-        run: |
-          make -j"$(nproc)" -C opensbi O=$(pwd)/build CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} PLATFORM=generic FW_PIC=y BUILD_INFO=y
-      - name: Collect OpenSBI Binary
-        if: ${{ steps.cache-opensbi-build.outputs.cache-hit != 'true' }}
-        run: |
-          mkdir dist
-          cp build/platform/generic/firmware/fw_dynamic.bin dist/fw_dynamic.bin
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: "opensbi-${{ matrix.target_name }}"
-          path: dist
+  build-opensbi-sg2042:
+    name: Build OpenSBI for SG2042
+    uses: ./.github/workflows/.sophgo-sg204x.opensbi-build.yml
+    with:
+      target_name: sophgo-sg2042
+      opensbi_repo: sophgo/opensbi
+      # Branch sg2042-dev as of 20260225
+      opensbi_ref: adc7ba17f3726aee599bc6fc879fbc569fbbba71
+  build-opensbi-sg2044:
+    name: Build OpenSBI for SG2044
+    uses: ./.github/workflows/.sophgo-sg204x.opensbi-build.yml
+    with:
+      target_name: sophgo-sg2044
+      opensbi_repo: revyos/opensbi
+      # Branch sg204x-v1.8.1 as of 20260225
+      opensbi_ref: 175cafd0ca69534c5a6943e1e427150e65fbec23
+  build-opensbi-sg2044-rva23:
+    name: Build OpenSBI for SG2044 with RVA23 Emu
+    uses: ./.github/workflows/.sophgo-sg204x.opensbi-build.yml
+    with:
+      target_name: sophgo-sg2044-rva23
+      opensbi_repo: revyos/opensbi
+      # Branch sg204x-v1.8.1-rva23 as of 20260225
+      opensbi_ref: 1a59a37c667dde717c26abf02c9a54c7c5d9212a
 
   build-u-root:
-    name: Build u-root for LinuxBoot
-    runs-on: ubuntu-latest
-    env:
-      U_ROOT_COMMIT_ID: 69595b5c67cb59b0afb9744d13625b9df6869a64
-    steps:
-      - name: Cache u-root Build
-        id: cache-u-root-build
-        uses: actions/cache@v5
-        with:
-          path: dist
-          key: cache-u-root-build-${{ env.U_ROOT_COMMIT_ID }}
-      - name: Setup Golang
-        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.17'
-          cache: true
-      - name: Checkout u-root
-        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
-        uses: actions/checkout@v6
-        with:
-          repository: openeuler-riscv/u-root
-          path: u-root
-          # Branch sg204x-v0.15 as of 20260225
-          ref: "${{ env.U_ROOT_COMMIT_ID }}"
-          fetch-depth: 1
-      - name: Build u-root
-        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
-        working-directory: u-root
-        run: |
-          go build
-          GOOS=linux GOARCH=riscv64 ./u-root -uroot-source . -build bb -uinitcmd="boot" -o initrd.img core boot
-      - name: Collect u-root Binary
-        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
-        run: |
-          mkdir dist
-          cp u-root/initrd.img dist/initrd.img
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: "u-root-sophgo-sg204x"
-          path: dist
+    name: Build u-root
+    uses: ./.github/workflows/.sophgo-sg204x.u-root-build.yml
+    with:
+      target_name: sophgo-sg204x
+      u_root_repo: openeuler-riscv/u-root
+      # Branch sg204x-v0.15 as of 20260225
+      u_root_ref: 69595b5c67cb59b0afb9744d13625b9df6869a64
 
-  build-kernel:
-    name: Build Linux Kernel
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - target_name: sophgo-sg2044
-            kernel_repo: revyos/linux
-            # Branch revyos/6.18.y as of 20260226
-            kernel_ref: a7aa9547d2b946aee64e68ff46ad0f61196fe798
-            kernel_defconfig: kexec_defconfig
-          - target_name: sophgo-sg2042
-            kernel_repo: sophgo/linux-riscv
-            # Branch sg2042-dev-6.6 as of 20260226
-            kernel_ref: 15143c39ba8d2ebd6c47e7eabcbf2a3b19960532
-            kernel_defconfig: sophgo_mango_normal_defconfig
-    steps:
-      - name: Cache Kernel Build
-        id: cache-kernel-build
-        uses: actions/cache@v5
-        with:
-          path: dist
-          key: cache-kernel-build-${{ matrix.kernel_repo }}-${{ matrix.kernel_defconfig }}-${{ matrix.kernel_ref }}
-      - uses: actions/checkout@v5
-        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
-      - name: Setup Toolchains
-        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
-        id: setup-gcc-toolchain
-        uses: ./.github/actions/riscv64-gcc-toolchain
-      - name: Checkout Kernel
-        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ matrix.kernel_repo }}
-          path: linux
-          # Branch sg204x as of 20260224
-          ref: ${{ matrix.kernel_ref }}
-          fetch-depth: 1
-      - name: Build Kernel
-        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
-        run: |
-          make -j"$(nproc)" -C linux O=$(pwd)/build ARCH=riscv CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} ${{ matrix.kernel_defconfig }}
-          make -j"$(nproc)" -C linux O=$(pwd)/build ARCH=riscv CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} Image dtbs
-      - name: Collect Kernel Binary
-        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
-        run: |
-          mkdir dist
-          cp build/arch/riscv/boot/Image dist/riscv64_Image
-          cp build/arch/riscv/boot/dts/sophgo/*.dtb dist
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: "kernel-${{ matrix.target_name }}"
-          path: dist
+  build-kernel-sg2042:
+    name: Build Kernel for SG2042
+    uses: ./.github/workflows/.sophgo-sg204x.kernel-build.yml
+    with:
+      target_name: sophgo-sg2042
+      kernel_repo: sophgo/linux-riscv
+      # Branch sg2042-dev-6.6 as of 20260226
+      kernel_ref: 15143c39ba8d2ebd6c47e7eabcbf2a3b19960532
+      kernel_defconfig: sophgo_mango_normal_defconfig
 
-  pack-sdimage-sg2042:
-    name: Pack SD Card Boot Image for SG2042
+  build-kernel-sg2044:
+    name: Build Kernel for SG2044
+    uses: ./.github/workflows/.sophgo-sg204x.kernel-build.yml
+    with:
+      target_name: sophgo-sg2044
+      kernel_repo: revyos/linux
+      # Branch revyos/6.18.y as of 20260226
+      kernel_ref: a7aa9547d2b946aee64e68ff46ad0f61196fe798
+      kernel_defconfig: kexec_defconfig
+
+  prepare-firmware-content-sg2042:
+    name: Prepare Firmware Contents for SG2042
     needs:
-      - build-zsbl
-      - build-opensbi
+      - build-zsbl-sg2042
+      - build-opensbi-sg2042
       - build-u-root
-      - build-kernel
+      - build-kernel-sg2042
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          # - zsbl_target_name: sophgo-sg2044-srd3-10
-          #   opensbi_target_name: sophgo-sg2044-rva23
-          #   kernel_target_name: sophgo-sg2044
-          # - zsbl_target_name: sophgo-sg2044-srd3-10
-          #   opensbi_target_name: sophgo-sg2044
-          #   kernel_target_name: sophgo-sg2044
-          - zsbl_target_name: sophgo-sg2042-milkv-pioneer
+          - firmware_target_name: linuxboot-sophgo-sg2042
+            zsbl_target_name: sophgo-sg2042
             opensbi_target_name: sophgo-sg2042
+            u_root_target_name: sophgo-sg204x
             kernel_target_name: sophgo-sg2042
-            output_filename: firmware-linuxboot-sophgo-sg2042.img
     steps:
       - name: Checkout This Repo
         uses: actions/checkout@v5
@@ -242,28 +106,33 @@ jobs:
           path: u-boot-build
       - name: Setup Work Dirs
         run: |
-          mkdir -p staging/riscv64
-          mkdir -p dist
+          mkdir -p dist/riscv64
       - name: Fetch Pre-built ZSBL
         uses: actions/download-artifact@v5
         with:
           name: "zsbl-${{ matrix.zsbl_target_name }}"
-          path: staging
+          path: dist
           merge-multiple: true
       - name: Copy fip.bin
         run: |
-          cp u-boot-build/sophgo-sg204x/blobs/sg2042/fip.bin staging
+          cp u-boot-build/sophgo-sg204x/blobs/sg2042/fip.bin dist
       - name: Fetch Pre-built OpenSBI
         uses: actions/download-artifact@v5
         with:
           name: "opensbi-${{ matrix.opensbi_target_name }}"
-          path: staging/riscv64
+          path: dist/riscv64
+          merge-multiple: true
+      - name: Fetch Pre-built u-root
+        uses: actions/download-artifact@v5
+        with:
+          name: "u-root-${{ matrix.u_root_target_name }}"
+          path: dist/riscv64
           merge-multiple: true
       - name: Fetch Pre-built Kernel
         uses: actions/download-artifact@v5
         with:
           name: "kernel-${{ matrix.kernel_target_name }}"
-          path: staging/riscv64
+          path: dist/riscv64
           merge-multiple: true
       - name: Install dtc
         run: |
@@ -271,26 +140,16 @@ jobs:
           sudo apt-get install -y device-tree-compiler
       - name: Fixup dtb name
         run: |
-          dtc staging/riscv64/mango-milkv-pioneer.dtb | sed 's/console=tty1 //' | dtc > staging/riscv64/sg2042-milkv-pioneer.dtb
-      - name: Fetch Pre-built u-root
-        uses: actions/download-artifact@v5
-        with:
-          name: "u-root-sophgo-sg204x"
-          path: staging/riscv64
-          merge-multiple: true
-      - name: Create SD Card Image
-        run: |
-          truncate -s 128M dist/${{ matrix.output_filename }}
-          echo "type=c" | sfdisk dist/${{ matrix.output_filename }}
-          LOOP_DEV="$(sudo losetup -Pf --show dist/${{ matrix.output_filename }})"
-          sudo mkfs.vfat -n BOOTFIRM "${LOOP_DEV}p1"
-          TEMP_MNT="$(mktemp -d)"
-          sudo mount "${LOOP_DEV}p1" "${TEMP_MNT}"
-          sudo cp -r staging/* "${TEMP_MNT}/"
-          sudo umount "${TEMP_MNT}"
-          sudo losetup -d "${LOOP_DEV}"
+          dtc dist/riscv64/mango-milkv-pioneer.dtb | sed 's/console=tty1 //' | dtc > dist/riscv64/sg2042-milkv-pioneer.dtb
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: "${{ matrix.output_filename }}"
+          name: "collected-${{ matrix.firmware_target_name }}"
           path: dist
+
+  pack-sd-boot-firmware-sg2042:
+    name: Pack SD Card Boot Image for SG2042
+    needs: prepare-firmware-content-sg2042
+    uses: ./.github/workflows/.sophgo-sg204x.pack-sdimg.yml
+    with:
+      firmware_target_name: linuxboot-sophgo-sg2042

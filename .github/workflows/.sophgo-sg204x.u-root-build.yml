@@ -1,0 +1,58 @@
+on:
+  workflow_call:
+    inputs:
+      target_name:
+        required: true
+        type: string
+      u_root_repo:
+        required: true
+        type: string
+      u_root_ref:
+        required: true
+        type: string
+
+jobs:
+  build-u-root:
+    name: Build u-root
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Cache u-root Build
+        id: cache-u-root-build
+        uses: actions/cache@v5
+        with:
+          path: dist
+          key: cache-u-root-build-${{ inputs.target_name }}-ref=${{ inputs.u_root_ref }}-wf=${{ hashFiles('ctx/.github/workflows/.sophgo-sg204x.u-root-build.yml') }}
+      - name: Setup Golang
+        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.17'
+          cache: true
+      - name: Checkout u-root
+        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.u_root_repo }}
+          path: u-root
+          # Branch sg204x-v0.15 as of 20260225
+          ref: ${{ inputs.u_root_ref }}
+          fetch-depth: 1
+      - name: Build u-root
+        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
+        working-directory: u-root
+        run: |
+          go build
+          GOOS=linux GOARCH=riscv64 ./u-root -uroot-source . -build bb -uinitcmd="boot" -o initrd.img core boot
+      - name: Collect u-root Binary
+        if: ${{ steps.cache-u-root-build.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir dist
+          cp u-root/initrd.img dist/initrd.img
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "u-root-${{ inputs.target_name }}"
+          path: dist

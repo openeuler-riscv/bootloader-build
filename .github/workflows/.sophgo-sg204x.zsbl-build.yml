@@ -1,0 +1,58 @@
+on:
+  workflow_call:
+    inputs:
+      target_name:
+        required: true
+        type: string
+      zsbl_repo:
+        required: true
+        type: string
+      zsbl_ref:
+        required: true
+        type: string
+      zsbl_defconfig:
+        required: true
+        type: string
+
+jobs:
+  build-zsbl:
+    name: Build ZSBL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Cache ZSBL Build
+        id: cache-zsbl-build
+        uses: actions/cache@v5
+        with:
+          path: dist
+          key: cache-zsbl-build-${{ inputs.target_name }}-ref=${{ inputs.zsbl_ref }}-wf=${{ hashFiles('ctx/.github/workflows/.sophgo-sg204x.zsbl-build.yml') }}
+      - name: Setup Toolchains
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+        id: setup-gcc-toolchain
+        uses: ./ctx/.github/actions/riscv64-gcc-toolchain
+      - name: Checkout ZSBL
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.zsbl_repo }}
+          path: zsbl
+          ref: ${{ inputs.zsbl_ref }}
+          fetch-depth: 1
+      - name: Build ZSBL
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+        working-directory: zsbl
+        run: |
+          make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} "${{ inputs.zsbl_defconfig }}"
+          make -j"$(nproc)" CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} USE_LINUX_BOOT=1 zsbl.bin
+      - name: Collect ZSBL Binary
+        if: ${{ steps.cache-zsbl-build.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir dist
+          cp zsbl/zsbl.bin dist/zsbl.bin
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "zsbl-${{ inputs.target_name }}"
+          path: dist

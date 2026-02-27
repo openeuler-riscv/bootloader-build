@@ -1,0 +1,38 @@
+on:
+  workflow_call:
+    inputs:
+      firmware_target_name:
+        required: true
+        type: string
+
+jobs:
+  pack-sdimg:
+    name: Pack SD Card Boot Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Work Dirs
+        run: |
+          mkdir -p staging
+          mkdir -p dist
+      - name: Fetch Collected Files
+        uses: actions/download-artifact@v5
+        with:
+          name: "collected-${{ inputs.firmware_target_name }}"
+          path: staging
+          merge-multiple: true
+      - name: Create SD Card Image
+        run: |
+          truncate -s 128M "dist/firmware-${{ inputs.firmware_target_name }}-sd-boot.img"
+          echo "type=c" | sfdisk "dist/firmware-${{ inputs.firmware_target_name }}-sd-boot.img"
+          LOOP_DEV="$(sudo losetup -Pf --show "dist/firmware-${{ inputs.firmware_target_name }}-sd-boot.img")"
+          sudo mkfs.vfat -n BOOTFIRM "${LOOP_DEV}p1"
+          TEMP_MNT="$(mktemp -d)"
+          sudo mount "${LOOP_DEV}p1" "${TEMP_MNT}"
+          sudo cp -r staging/* "${TEMP_MNT}/"
+          sudo umount "${TEMP_MNT}"
+          sudo losetup -d "${LOOP_DEV}"
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firmware-${{ inputs.firmware_target_name }}-sd-boot"
+          path: dist
