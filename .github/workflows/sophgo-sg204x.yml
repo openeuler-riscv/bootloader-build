@@ -265,9 +265,13 @@ jobs:
           name: "kernel-${{ matrix.kernel_target_name }}"
           path: staging/riscv64
           merge-multiple: true
+      - name: Install dtc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y device-tree-compiler
       - name: Fixup dtb name
         run: |
-          mv staging/riscv64/mango-milkv-pioneer.dtb staging/riscv64/sg2042-milkv-pioneer.dtb
+          dtc staging/riscv64/mango-milkv-pioneer.dtb | sed 's/console=tty1 //' | dtc > staging/riscv64/sg2042-milkv-pioneer.dtb
       - name: Fetch Pre-built u-root
         uses: actions/download-artifact@v5
         with:
