@@ -147,9 +147,74 @@ jobs:
           name: "collected-${{ matrix.firmware_target_name }}"
           path: dist
 
+  prepare-firmware-content-sg2044-rva23:
+    name: Prepare Firmware Contents for SG2044 with RVA23 Emu
+    needs:
+      - build-zsbl-sg2044
+      - build-opensbi-sg2044-rva23
+      - build-u-root
+      - build-kernel-sg2044
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - firmware_target_name: linuxboot-sophgo-sg2044-rva23
+            zsbl_target_name: sophgo-sg2044
+            opensbi_target_name: sophgo-sg2044-rva23
+            u_root_target_name: sophgo-sg204x
+            kernel_target_name: sophgo-sg2044
+    steps:
+      - name: Checkout This Repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          path: u-boot-build
+      - name: Setup Work Dirs
+        run: |
+          mkdir -p dist/riscv64
+      - name: Fetch Pre-built ZSBL
+        uses: actions/download-artifact@v5
+        with:
+          name: "zsbl-${{ matrix.zsbl_target_name }}"
+          path: dist/riscv64
+          merge-multiple: true
+      - name: Copy fsbl.bin
+        run: |
+          cp u-boot-build/sophgo-sg204x/blobs/sg2044/fsbl.bin dist/riscv64
+      - name: Fetch Pre-built OpenSBI
+        uses: actions/download-artifact@v5
+        with:
+          name: "opensbi-${{ matrix.opensbi_target_name }}"
+          path: dist/riscv64
+          merge-multiple: true
+      - name: Fetch Pre-built u-root
+        uses: actions/download-artifact@v5
+        with:
+          name: "u-root-${{ matrix.u_root_target_name }}"
+          path: dist/riscv64
+          merge-multiple: true
+      - name: Fetch Pre-built Kernel
+        uses: actions/download-artifact@v5
+        with:
+          name: "kernel-${{ matrix.kernel_target_name }}"
+          path: dist/riscv64
+          merge-multiple: true
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "collected-${{ matrix.firmware_target_name }}"
+          path: dist
+
   pack-sd-boot-firmware-sg2042:
     name: Pack SD Card Boot Image for SG2042
     needs: prepare-firmware-content-sg2042
     uses: ./.github/workflows/.sophgo-sg204x.pack-sdimg.yml
     with:
       firmware_target_name: linuxboot-sophgo-sg2042
+
+  pack-sd-boot-firmware-sg2044-rva23:
+    name: Pack SD Card Boot Image for SG2044 with RVA23 Emu
+    needs: prepare-firmware-content-sg2044-rva23
+    uses: ./.github/workflows/.sophgo-sg204x.pack-sdimg.yml
+    with:
+      firmware_target_name: linuxboot-sophgo-sg2044-rva23
