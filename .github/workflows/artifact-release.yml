@@ -10,6 +10,10 @@ on:
       run_id:
         required: true
         type: string
+      artifact_pattern:
+        required: false
+        type: string
+        default: ''
 
 jobs:
   artifact-release:
@@ -24,6 +28,7 @@ jobs:
         with:
           run-id: ${{inputs.run_id}}
           merge-multiple: true
+          pattern: ${{inputs.artifact_pattern}}
       - name: Update Tag
         uses: actions/github-script@v5
         with:
