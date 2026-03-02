@@ -118,3 +118,16 @@ jobs:
     uses: ./.github/workflows/.sophgo-sg204x.pack-sdimg.yml
     with:
       firmware_target_name: linuxboot-sophgo-sg2042
+
+  release:
+    name: Release Firmware for SOPHGO SG2042
+    needs: pack-sd-boot-firmware-sg2042
+    uses: ./.github/workflows/artifact-release.yml
+    permissions:
+      contents: write
+    secrets: inherit
+    with:
+      tag_name: release-sophgo-sg2042
+      release_name: Boot Firmware for SOPHGO SG2042
+      run_id: ${{github.run_id}}
+      artifact_pattern: "firmware-*"
