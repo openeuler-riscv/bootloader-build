@@ -42,8 +42,8 @@ jobs:
     with:
       target_name: sophgo-sg204x
       u_root_repo: openeuler-riscv/u-root
-      # Branch sg204x-v0.15 as of 20260225
-      u_root_ref: 69595b5c67cb59b0afb9744d13625b9df6869a64
+      # Branch sg204x-v0.15 as of 20260407
+      u_root_ref: c3d8652700827d7942da9e6512ab56e02cad0a32
 
   build-kernel-sg2044:
     name: Build Kernel for SG2044
