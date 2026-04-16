@@ -2,7 +2,9 @@
 
 ## Filelist
 
-- `a210-aon.bin`: Always-On firmware, powermanage purpose
+- ~~`a210-aon.bin`: Always-On firmware, powermanage purpose~~
+  - Note: Moved to initramfs thus not required by bootloader stage
+
 - `bootzero2.bin`:  Proprietary firmware, performs platform initialization
 - `bootzero-rvbl.bin`: Same as above but specially designed for fastboot loading
 - `a210-opensbi.dtb`: DTB used by OpenSBI, built from kernel source
