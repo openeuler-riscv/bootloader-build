@@ -132,31 +132,16 @@ jobs:
         include:
           - firmware_target_name: linuxboot-sophgo-sg2042
     steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
       - name: Setup Work Dirs
         run: |
           mkdir -p staging
           mkdir -p dist
-      - name: Cache Pack-Tool Build
-        id: cache-pack-tool-build
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.PACKTOOL_PATH }}
-          key: cache-pack-tool-build-${{ runner.os }}-ref=${{ github.sha }}
-      - uses: actions/checkout@v6
-        if: ${{ steps.cache-pack-tool-build.outputs.cache-hit != 'true' }}
-        with:
-          fetch-depth: 1
-          path: bootloader-build
-      - name: Install Dependencies
-        if: ${{ steps.cache-pack-tool-build.outputs.cache-hit != 'true' }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y gcc make
-      - name: Build Pack-Tool
-        if: ${{ steps.cache-pack-tool-build.outputs.cache-hit != 'true' }}
-        run: |
-          make -C bootloader-build/sophgo/sg204x-pack-tool/
-          mkdir -p "$(dirname "${PACKTOOL_PATH}")"
-          cp bootloader-build/sophgo/sg204x-pack-tool/pack ${PACKTOOL_PATH}
+      - name: Setup Pack Tool
+        id: setup-pack-tool
+        uses: ./ctx/.github/actions/sg204x-pack-tool
       - name: Fetch Collected Files
         uses: actions/download-artifact@v5
         with:
@@ -166,14 +151,14 @@ jobs:
       - name: Pack Firmware
         run: |
           BINARY_FILE="dist/firmware-${{ matrix.firmware_target_name }}-nor-boot.bin"
-          "${PACKTOOL_PATH}" -a -p fip.bin -t 0x600000 -f "staging/fip.bin" -o 0x30000 "${BINARY_FILE}"
-          "${PACKTOOL_PATH}" -a -p zsbl.bin -t 0x600000 -f "staging/zsbl.bin" -l 0x40000000 "${BINARY_FILE}"
-          "${PACKTOOL_PATH}" -a -p fw_dynamic.bin -t 0x600000 -f "staging/riscv64/fw_dynamic.bin" -l 0x0 "${BINARY_FILE}"
-          "${PACKTOOL_PATH}" -a -p riscv64_Image -t 0x600000 -f "staging/riscv64/riscv64_Image" -l 0x2000000 "${BINARY_FILE}"
-          "${PACKTOOL_PATH}" -a -p initrd.img -t 0x600000 -f "staging/riscv64/initrd.img" -l 0x30000000 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p fip.bin -t 0x600000 -f "staging/fip.bin" -o 0x30000 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p zsbl.bin -t 0x600000 -f "staging/zsbl.bin" -l 0x40000000 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p fw_dynamic.bin -t 0x600000 -f "staging/riscv64/fw_dynamic.bin" -l 0x0 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p riscv64_Image -t 0x600000 -f "staging/riscv64/riscv64_Image" -l 0x2000000 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p initrd.img -t 0x600000 -f "staging/riscv64/initrd.img" -l 0x30000000 "${BINARY_FILE}"
           for dtbfile in staging/riscv64/*.dtb; do
             if [ -e "${dtbfile}" ]; then
-              "${PACKTOOL_PATH}" -a -p "$(basename "${dtbfile}")" -t 0x600000 -f "${dtbfile}" -l 0x20000000 "${BINARY_FILE}"
+              "${{ steps.setup-pack-tool.outputs.path }}" -a -p "$(basename "${dtbfile}")" -t 0x600000 -f "${dtbfile}" -l 0x20000000 "${BINARY_FILE}"
             fi
           done
       - name: Upload Artifacts

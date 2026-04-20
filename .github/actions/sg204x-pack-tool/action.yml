@@ -1,0 +1,32 @@
+name: 'SG204x Pack-Tool'
+description: 'Build Pack-Tool for SG204x Targets'
+outputs:
+  path:
+    description: "Full path to installed pack tool"
+    value: /opt/sophgo-packtool/pack
+runs:
+  using: "composite"
+  steps:
+    - name: Cache Pack-Tool Build
+      id: cache-pack-tool-build
+      uses: actions/cache@v5
+      with:
+        path: /opt/sophgo-packtool/pack
+        key: cache-pack-tool-build-${{ runner.os }}-ref=${{ github.sha }}
+    - uses: actions/checkout@v6
+      if: ${{ steps.cache-pack-tool-build.outputs.cache-hit != 'true' }}
+      with:
+        fetch-depth: 1
+        path: bootloader-build
+    - name: Install Dependencies
+      if: ${{ steps.cache-pack-tool-build.outputs.cache-hit != 'true' }}
+      shell: bash
+      run: |
+        sudo apt-get update && sudo apt-get install -y gcc make
+    - name: Build Pack-Tool
+      if: ${{ steps.cache-pack-tool-build.outputs.cache-hit != 'true' }}
+      shell: bash
+      run: |
+        make -C bootloader-build/sophgo/sg204x-pack-tool/
+        mkdir -p "/opt/sophgo-packtool"
+        cp bootloader-build/sophgo/sg204x-pack-tool/pack /opt/sophgo-packtool/pack
