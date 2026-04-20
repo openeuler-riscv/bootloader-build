@@ -115,14 +115,65 @@ jobs:
 
   pack-sd-boot-firmware-sg2044-rva23:
     name: Pack SD Card Boot Image for SG2044 with RVA23 Emu
-    needs: prepare-firmware-content-sg2044-rva23
-    uses: ./.github/workflows/.sophgo-sg204x.pack-sdimg.yml
+    needs:
+      - prepare-firmware-content-sg2044-rva23
+      - pack-nor-boot-firmware-sg2044-rva23
+    uses: ./.github/workflows/.sophgo-sg204x.pack-sdimg-with-fwupdate.yml
     with:
       firmware_target_name: linuxboot-sophgo-sg2044-rva23
+      mtd_device: /dev/mtd0
+
+  pack-nor-boot-firmware-sg2044-rva23:
+    name: Pack NOR Flash Boot Image for SG2044 with RVA23 Emu
+    needs: prepare-firmware-content-sg2044-rva23
+    runs-on: ubuntu-latest
+    env:
+      PACKTOOL_PATH: /opt/sophgo-packtool/pack
+    strategy:
+      matrix:
+        include:
+          - firmware_target_name: linuxboot-sophgo-sg2044-rva23
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Setup Work Dirs
+        run: |
+          mkdir -p staging
+          mkdir -p dist
+      - name: Setup Pack Tool
+        id: setup-pack-tool
+        uses: ./ctx/.github/actions/sg204x-pack-tool
+      - name: Fetch Collected Files
+        uses: actions/download-artifact@v5
+        with:
+          name: "collected-${{ matrix.firmware_target_name }}"
+          path: staging
+          merge-multiple: true
+      - name: Pack Firmware
+        run: |
+          BINARY_FILE="dist/firmware-${{ matrix.firmware_target_name }}-nor-boot.bin"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p fsbl.bin -t 0x80000 -f "staging/riscv64/fsbl.bin" -l 0x7010080000 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p zsbl.bin -t 0x80000 -f "staging/riscv64/zsbl.bin" -l 0x40000000 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p fw_dynamic.bin -t 0x80000 -f "staging/riscv64/fw_dynamic.bin" -l 0x80000000 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p riscv64_Image -t 0x80000 -f "staging/riscv64/riscv64_Image" -l 0x80200000 -o 0x600000 "${BINARY_FILE}"
+          "${{ steps.setup-pack-tool.outputs.path }}" -a -p initrd.img -t 0x80000 -f "staging/riscv64/initrd.img" -l 0x8b000000 "${BINARY_FILE}"
+          for dtbfile in staging/riscv64/*.dtb; do
+            if [ -e "${dtbfile}" ]; then
+              "${{ steps.setup-pack-tool.outputs.path }}" -a -p "$(basename "${dtbfile}")" -t 0x80000 -f "${dtbfile}" -l 0x88000000 "${BINARY_FILE}"
+            fi
+          done
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firmware-${{ matrix.firmware_target_name }}-nor-boot"
+          path: dist
 
   release:
     name: Release Firmware for SOPHGO SG2044
-    needs: pack-sd-boot-firmware-sg2044-rva23
+    needs:
+      - pack-sd-boot-firmware-sg2044-rva23
+      - pack-nor-boot-firmware-sg2044-rva23
     uses: ./.github/workflows/artifact-release.yml
     permissions:
       contents: write
