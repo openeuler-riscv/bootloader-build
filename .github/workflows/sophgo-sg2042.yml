@@ -120,6 +120,7 @@ jobs:
     uses: ./.github/workflows/.sophgo-sg204x.pack-sdimg-with-fwupdate.yml
     with:
       firmware_target_name: linuxboot-sophgo-sg2042
+      mtd_device: /dev/mtd1
 
   pack-nor-boot-firmware-sg2042:
     name: Pack NOR Flash Boot Image for SG2042

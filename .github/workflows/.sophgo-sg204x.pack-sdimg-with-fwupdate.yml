@@ -4,6 +4,9 @@ on:
       firmware_target_name:
         required: true
         type: string
+      mtd_device:
+        required: true
+        type: string
 
 jobs:
   pack-sdimg:
@@ -35,10 +38,10 @@ jobs:
           ## FirmwareUpdate configuration collects a list of possible updates
 
           firmware    fwupdate-0
-          label       Update LinuxBoot on /dev/mtd1
+          label       Update LinuxBoot on ${{ inputs.mtd_device }}
           type        mtd
           file        /firmware-update/firmware-${{ inputs.firmware_target_name }}-nor-boot.bin
-          device      /dev/mtd1
+          device      ${{ inputs.mtd_device }}
           EOF
       - name: Create SD Card Image
         run: |
