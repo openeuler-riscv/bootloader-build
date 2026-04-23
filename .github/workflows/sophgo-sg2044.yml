@@ -51,8 +51,8 @@ jobs:
     with:
       target_name: sophgo-sg2044
       kernel_repo: revyos/linux
-      # Branch revyos/6.18.y as of 20260226
-      kernel_ref: a7aa9547d2b946aee64e68ff46ad0f61196fe798
+      # Branch revyos/6.18.y as of 20260423
+      kernel_ref: cc4c44ed4c36aae6322d10937df0635341698b03
       kernel_defconfig: kexec_defconfig
 
   prepare-firmware-content-sg2044-rva23:
