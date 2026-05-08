@@ -1,0 +1,80 @@
+name: SpacemiT K3
+
+on:
+  push:
+    paths:
+      - '.github/workflows/spacemit-k3.yml'
+      - 'spacemit/k3/**'
+
+jobs:
+  build:
+    name: Build U-Boot for SpacemiT K3
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - suffix: ""
+            opensbi_repo: bianbu-linux/opensbi.git
+            opensbi_hostserv: https://gitee.com
+            opensbi_ref: k3-br-v1.0.0
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Setup Toolchains
+        id: setup-gcc-toolchain
+        uses: ./ctx/.github/actions/gcc-riscv64-unknown-linux-gnu
+      - name: Checkout U-Boot Source
+        uses: actions/checkout@v5
+        with:
+          repository: openeuler-riscv/u-boot.git
+          # branch spacemit-k3-vendor-2022.10 as of 20260507
+          ref: 1f3cd97b2bbf1226b50415b8446245d65bbdacc3
+          fetch-depth: 1
+          path: u-boot
+      - name: Checkout OpenSBI Source
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ matrix.opensbi_repo }}
+          github-server-url: ${{ matrix.opensbi_hostserv }}
+          ref: ${{ matrix.opensbi_ref }}
+          fetch-depth: 1
+          path: opensbi
+      - name: Build OpenSBI
+        run: |
+          mkdir -p build
+          make -C opensbi -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} PLATFORM=generic PLATFORM_DEFCONFIG=k3_defconfig
+      - name: Build U-Boot
+        # K3 doesn't have out-of-tree build support
+        run: |
+          make -C u-boot -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} k3_defconfig
+          make -C u-boot -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }}
+      - name: Collect Results
+        run: |
+          STAGING_DIR="$(pwd)/staging"
+          DIST_DIR="$(pwd)/dist"
+          mkdir -p "${STAGING_DIR}"
+          mkdir -p "${DIST_DIR}"
+          cp opensbi/build/platform/generic/firmware/fw_dynamic.itb "${STAGING_DIR}"
+          cp u-boot/u-boot.itb "${STAGING_DIR}"
+          cp u-boot/u-boot-env-default.bin "${STAGING_DIR}"
+          cp u-boot/FSBL.bin "${STAGING_DIR}"
+          cp u-boot/bootinfo_spinor.bin "${STAGING_DIR}"
+          cp ./ctx/spacemit/k3/partition_4M.json "${STAGING_DIR}/partition-mtd.json"
+          cd "${STAGING_DIR}"; zip -r "${DIST_DIR}/bl-spacemit-k3${{ matrix.suffix }}.zip" .; cd ..
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: k3-firmware${{ matrix.suffix }}
+          path: dist
+  release:
+    name: Release Firmware for SpacemiT K3
+    needs: build
+    uses: ./.github/workflows/artifact-release.yml
+    permissions:
+      contents: write
+    secrets: inherit
+    with:
+      tag_name: release-spacemit-k3
+      release_name: Boot Firmware for SpacemiT K3
+      run_id: ${{github.run_id}}
