@@ -25,8 +25,8 @@ jobs:
     with:
       target_name: sophgo-sg2042
       opensbi_repo: sophgo/opensbi
-      # Branch sg2042-dev as of 20260225
-      opensbi_ref: adc7ba17f3726aee599bc6fc879fbc569fbbba71
+      # Branch sg2042-dev as of 20260508
+      opensbi_ref: 7b9d863de59a1ec4923396ff8e814c87b987287e
 
   build-u-root:
     name: Build u-root
