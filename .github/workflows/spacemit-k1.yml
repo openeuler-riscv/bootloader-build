@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/spacemit-k1.yml'
-      - 'spacemit-k1/**'
+      - 'spacemit/k1/**'
 
 jobs:
   build:
@@ -69,8 +69,8 @@ jobs:
         run: |
           STAGING_DIR="$(pwd)/staging"
           mkdir -p "${STAGING_DIR}"
-          ./u-boot-build/spacemit-k1/gen_fwpart_norflash.sh u-boot/.config > "${STAGING_DIR}/partition-mtd.json"
-          cp u-boot-build/spacemit-k1/partition-sdmmc.json "${STAGING_DIR}"
+          ./u-boot-build/spacemit/k1/gen_fwpart_norflash.sh u-boot/.config > "${STAGING_DIR}/partition-mtd.json"
+          cp u-boot-build/spacemit/k1/partition-sdmmc.json "${STAGING_DIR}"
       - name: Collect Results
         run: |
           STAGING_DIR="$(pwd)/staging"
