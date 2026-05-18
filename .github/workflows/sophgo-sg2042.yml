@@ -35,7 +35,7 @@ jobs:
       target_name: sophgo-sg204x
       u_root_repo: openeuler-riscv/u-root
       # Branch sg204x-v0.15 as of 20260518
-      u_root_ref: c90a2189cd62b24840b7a3c77ae3946838fc102b
+      u_root_ref: 6ea53f179e1999c0e912f7d4c81de62ceac6fd28
 
   build-kernel-sg2042:
     name: Build Kernel for SG2042
