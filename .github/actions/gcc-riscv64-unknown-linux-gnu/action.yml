@@ -21,13 +21,13 @@ runs:
           python3-sphinx-rtd-theme python3-subunit python3-testtools \
           python3-venv swig uuid-dev u-boot-tools
     - name: Cache RISCV64 GCC Toolchain
-      id: cache-riscv64-gcc-toolchain
+      id: cache-gcc-riscv64-unknown-linux-gnu
       uses: actions/cache@v5
       with:
         path: /opt/riscv-gnu-toolchain
         key: cache-gcc-riscv64-glibc-ubuntu-24.04-2026.02.13
     - name: Setup RISCV64 GCC Toolchain
-      if: ${{ steps.cache-riscv64-gcc-toolchain.outputs.cache-hit != 'true' }}
+      if: ${{ steps.cache-gcc-riscv64-unknown-linux-gnu.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
         curl -L "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2026.02.13/riscv64-glibc-ubuntu-24.04-gcc.tar.xz" -o /tmp/riscv64-gcc.tar.xz
