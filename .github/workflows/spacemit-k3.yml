@@ -165,3 +165,4 @@ jobs:
       tag_name: release-spacemit-k3
       release_name: Boot Firmware for SpacemiT K3
       run_id: ${{github.run_id}}
+      artifact_pattern: "firmware"
