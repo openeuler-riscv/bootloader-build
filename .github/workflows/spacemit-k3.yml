@@ -7,16 +7,9 @@ on:
       - 'spacemit/k3/**'
 
 jobs:
-  build:
+  build-uboot:
     name: Build U-Boot for SpacemiT K3
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - suffix: ""
-            opensbi_repo: bianbu-linux/opensbi.git
-            opensbi_hostserv: https://gitee.com
-            opensbi_ref: k3-br-v1.0.0
     steps:
       - uses: actions/checkout@v6
         with:
@@ -32,18 +25,6 @@ jobs:
           ref: 1f3cd97b2bbf1226b50415b8446245d65bbdacc3
           fetch-depth: 1
           path: u-boot
-      - name: Checkout OpenSBI Source
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ matrix.opensbi_repo }}
-          github-server-url: ${{ matrix.opensbi_hostserv }}
-          ref: ${{ matrix.opensbi_ref }}
-          fetch-depth: 1
-          path: opensbi
-      - name: Build OpenSBI
-        run: |
-          mkdir -p build
-          make -C opensbi -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} PLATFORM=generic PLATFORM_DEFCONFIG=k3_defconfig
       - name: Build U-Boot
         # K3 doesn't have out-of-tree build support
         run: |
@@ -51,25 +32,108 @@ jobs:
           make -C u-boot -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }}
       - name: Collect Results
         run: |
-          STAGING_DIR="$(pwd)/staging"
-          DIST_DIR="$(pwd)/dist"
-          mkdir -p "${STAGING_DIR}"
-          mkdir -p "${DIST_DIR}"
-          cp opensbi/build/platform/generic/firmware/fw_dynamic.itb "${STAGING_DIR}"
-          cp u-boot/u-boot.itb "${STAGING_DIR}"
-          cp u-boot/u-boot-env-default.bin "${STAGING_DIR}"
-          cp u-boot/FSBL.bin "${STAGING_DIR}"
-          cp u-boot/bootinfo_spinor.bin "${STAGING_DIR}"
-          cp ./ctx/spacemit/k3/partition_4M.json "${STAGING_DIR}/partition-mtd.json"
-          cd "${STAGING_DIR}"; zip -r "${DIST_DIR}/bl-spacemit-k3${{ matrix.suffix }}.zip" .; cd ..
+          mkdir dist
+          cp u-boot/u-boot.itb dist
+          cp u-boot/u-boot-env-default.bin dist
+          cp u-boot/FSBL.bin dist
+          cp u-boot/bootinfo_spinor.bin dist
+          cp ./ctx/spacemit/k3/partition_4M.json dist
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: k3-firmware${{ matrix.suffix }}
+          name: uboot
           path: dist
+
+  build-opensbi:
+    name: Build OpenSBI for SpacemiT K3'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Setup Toolchains
+        id: setup-gcc-toolchain
+        uses: ./ctx/.github/actions/gcc-riscv64-unknown-linux-gnu
+      - name: Checkout OpenSBI Source
+        uses: actions/checkout@v5
+        with:
+          repository: bianbu-linux/opensbi.git
+          github-server-url: https://gitee.com
+          ref: k3-br-v1.0.0
+          fetch-depth: 1
+          path: opensbi
+      - name: Build OpenSBI
+        run: |
+          make -C opensbi -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} PLATFORM=generic PLATFORM_DEFCONFIG=k3_defconfig
+      - name: Collect
+        run: |
+          mkdir dist
+          cp opensbi/build/platform/generic/firmware/fw_dynamic.itb dist
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: opensbi
+          path: dist
+
+  build-esos:
+    name: Build esos.itb for SpacemiT K3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Setup Toolchains
+        id: setup-gcc-toolchain
+        uses: ./ctx/.github/actions/gcc-riscv64-unknown-elf
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y scons lzop
+      - name: Checkout esos Source
+        uses: actions/checkout@v6
+        with:
+          repository: openeuler-riscv/spacemit-k3-firmware-esos.git
+          # branch spacemit-k3-esos as of 20260519
+          ref: 47b99681f1efa981d2cfe99d7f45e225346931be
+          fetch-depth: 1
+          path: esos
+      - name: Checkout esos-lite Source
+        uses: actions/checkout@v6
+        with:
+          repository: openeuler-riscv/spacemit-k3-firmware-esos-lite.git
+          # branch spacemit-k3-esos-lite as of 20260519
+          ref: 8cb4651ad67261f6f30a4e91db61f7b5f50470a1
+          fetch-depth: 1
+          path: esos/components/esos-lite
+      - name: Build esos-lite
+        working-directory: esos/components/esos-lite/rt-thread/bsp/spacemit
+        run: |
+          RTT_EXEC_PATH="${{ steps.setup-gcc-toolchain.outputs.path }}" scons
+      - name: Build esos
+        working-directory: esos/bsp/spacemit
+        run: |
+          RTT_EXEC_PATH="${{ steps.setup-gcc-toolchain.outputs.path }}" scons core0
+          RTT_EXEC_PATH="${{ steps.setup-gcc-toolchain.outputs.path }}" scons core1
+      - name: Build itb
+        working-directory: esos
+        run: |
+          mkimage -f esos_rt24.its ../output/esos_rt24.itb
+      - name: Collect
+        run: |
+          mkdir dist
+          cp output/esos_rt24.itb dist
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: esos
+          path: dist
+
   release:
     name: Release Firmware for SpacemiT K3
-    needs: build
+    needs:
+      - build-uboot
+      - build-opensbi
+      - build-esos
     uses: ./.github/workflows/artifact-release.yml
     permissions:
       contents: write
