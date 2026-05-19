@@ -39,7 +39,7 @@ jobs:
           cp u-boot/bootinfo_spinor.bin dist
           cp ./ctx/spacemit/k3/partition_4M.json dist
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: uboot
           path: dist
@@ -70,7 +70,7 @@ jobs:
           mkdir dist
           cp opensbi/build/platform/generic/firmware/fw_dynamic.itb dist
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: opensbi
           path: dist
@@ -123,7 +123,7 @@ jobs:
           mkdir dist
           cp output/esos_rt24.itb dist
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: esos
           path: dist
