@@ -128,12 +128,35 @@ jobs:
           name: esos
           path: dist
 
-  release:
-    name: Release Firmware for SpacemiT K3
+  collect:
+    name: Archiving Files
     needs:
       - build-uboot
       - build-opensbi
       - build-esos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          run-id: ${{inputs.run_id}}
+          merge-multiple: true
+          path: staging
+      - name: Archiving
+        working-directory: staging
+        run: |
+          mkdir ../dist
+          zip -r ../dist/bl-spacemit-k3.zip .
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: firmware
+          path: dist
+
+  release:
+    name: Release Firmware for SpacemiT K3
+    needs:
+      - collect
     uses: ./.github/workflows/artifact-release.yml
     permissions:
       contents: write
