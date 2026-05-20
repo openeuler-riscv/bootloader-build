@@ -1,0 +1,30 @@
+name: Keep Cache Alive
+
+on:
+  schedule:
+    # Run every 6 days — GitHub evicts caches not accessed within 7 days
+    - cron: '0 0 */6 * *'
+  workflow_dispatch: # Allow manual trigger for convenience
+
+jobs:
+  refresh-elf-toolchain:
+    name: Refresh Cache for elf Toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Setup Toolchains
+        id: setup-gcc-toolchain
+        uses: ./ctx/.github/actions/gcc-riscv64-unknown-elf
+
+  refresh-linux-gnu-toolchain:
+    name: Refresh Cache for linux-gnu Toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: ctx
+      - name: Setup Toolchains
+        id: setup-gcc-toolchain
+        uses: ./ctx/.github/actions/gcc-riscv64-unknown-linux-gnu
