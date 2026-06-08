@@ -21,14 +21,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: openeuler-riscv/u-boot.git
-          # branch spacemit-k3-vendor-2022.10 as of 20260507
-          ref: 1f3cd97b2bbf1226b50415b8446245d65bbdacc3
+          # branch spacemit-k3-vendor-2022.10 as of 20260608
+          ref: e69ae0037b35edd9f6688a720e75236f6f69f78c
           fetch-depth: 1
           path: u-boot
       - name: Build U-Boot
         # K3 doesn't have out-of-tree build support
         run: |
-          make -C u-boot -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} k3_defconfig
+          make -C u-boot -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }} k3_oerv_defconfig
           make -C u-boot -j $(nproc) CROSS_COMPILE=${{ steps.setup-gcc-toolchain.outputs.full-prefix }}
       - name: Collect Results
         run: |
@@ -59,7 +59,7 @@ jobs:
         with:
           repository: bianbu-linux/opensbi.git
           github-server-url: https://gitee.com
-          ref: k3-br-v1.0.0
+          ref: k3-br-v1.0.2
           fetch-depth: 1
           path: opensbi
       - name: Build OpenSBI
@@ -93,16 +93,16 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: openeuler-riscv/spacemit-k3-firmware-esos.git
-          # branch spacemit-k3-esos as of 20260519
-          ref: 47b99681f1efa981d2cfe99d7f45e225346931be
+          # branch spacemit-k3-esos as of 20260608
+          ref: 521c91585a066482c81f7eb794734073b04fbb4b
           fetch-depth: 1
           path: esos
       - name: Checkout esos-lite Source
         uses: actions/checkout@v6
         with:
           repository: openeuler-riscv/spacemit-k3-firmware-esos-lite.git
-          # branch spacemit-k3-esos-lite as of 20260519
-          ref: 8cb4651ad67261f6f30a4e91db61f7b5f50470a1
+          # branch spacemit-k3-esos-lite as of 20260608
+          ref: 0400dad1b722dd9c235852a27f6396cc8e83076a
           fetch-depth: 1
           path: esos/components/esos-lite
       - name: Build esos-lite
