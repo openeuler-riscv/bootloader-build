@@ -40,6 +40,35 @@ jobs:
           path: linux
           ref: ${{ inputs.kernel_ref }}
           fetch-depth: 1
+      - name: Patch Kernel for NOR device
+        if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
+        run: |
+          cat << EOF >> linux/arch/riscv/boot/dts/sophgo/sg2044-sophgo-srd3-10.dts
+
+          &spifmc1 {
+            status = "okay";
+
+            flash@0 {
+                compatible = "jedec,spi-nor";
+                reg = <0>;
+                spi-max-frequency = <133000000>;
+                spi-tx-bus-width = <1>;
+                spi-rx-bus-width = <1>;
+            };
+          };
+
+          &spifmc0 {
+            status = "okay";
+
+            flash@0 {
+                compatible = "jedec,spi-nor";
+                reg = <0>;
+                spi-max-frequency = <133000000>;
+                spi-tx-bus-width = <1>;
+                spi-rx-bus-width = <1>;
+            };
+          };
+          EOF
       - name: Build Kernel
         if: ${{ steps.cache-kernel-build.outputs.cache-hit != 'true' }}
         run: |
