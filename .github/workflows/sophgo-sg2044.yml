@@ -33,8 +33,8 @@ jobs:
     with:
       target_name: sophgo-sg2044-rva23
       opensbi_repo: revyos/opensbi
-      # Branch sg204x-v1.8.1-rva23 as of 20260225
-      opensbi_ref: 1a59a37c667dde717c26abf02c9a54c7c5d9212a
+      # Branch sg204x-v1.8.1-rva23 as of 20260624
+      opensbi_ref: cba4ce61561f76e7ab9c78d9160c613bb5f81124
 
   build-u-root:
     name: Build u-root
