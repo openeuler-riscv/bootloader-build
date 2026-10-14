@@ -22,7 +22,7 @@ jobs:
         with:
           repository: openeuler-riscv/u-boot.git
           # branch spacemit-k3-vendor-2022.10 as of 20261014
-          ref: 168faa2c8d4baa26a7238713fc678250f9391fad
+          ref: 4f71cd847a9eae28761b83fba14e02b867a7b629
           fetch-depth: 1
           path: u-boot
       - name: Build U-Boot
