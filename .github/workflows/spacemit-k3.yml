@@ -57,9 +57,9 @@ jobs:
       - name: Checkout OpenSBI Source
         uses: actions/checkout@v5
         with:
-          repository: bianbu-linux/opensbi.git
-          github-server-url: https://gitee.com
-          ref: k3-br-v1.0.2
+          repository: openeuler-riscv/vendor-opensbi.git
+          # branch vendor-spacemit-k3 as of 20261110
+          ref: cf9974b801d74f67b0aee3f32def8d0a43e7a724
           fetch-depth: 1
           path: opensbi
       - name: Build OpenSBI
